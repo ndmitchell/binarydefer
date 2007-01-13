@@ -59,6 +59,7 @@ defer x = (save, load)
             
 
 defers :: [a -> Pending a] -> Both a
+defers [x] = defer x
 defers xs = (save, load)
     where
         save hndl value = f $ zip [0::Int ..] xs
