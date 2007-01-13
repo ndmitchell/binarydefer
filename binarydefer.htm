@@ -67,6 +67,7 @@ h3 {
 <ol>
 	<li>Deferred loading explained, the basics</li>
     <li>A real-life example (from Hoogle)</li>
+    <li>Writing new custom instances</li>
 </ol>
 <p>
     The source code to this library is at:
@@ -113,7 +114,10 @@ instance BinaryDefer DataBase where
 	bothDefer = defer [\ ~(DataBase a) -> unit DataBase << a]
 </pre>
 <p>
-	The way to write these instances should be fairly mechanical. Now to use deferred loading we need to manually decide which fields should be strict, and which should be deferred. In the above application text should definately be deferred - it's likely to be very big, and it's unlikely to be used. The URL is probably also a good candidate for deferring - the size is reasonable and assuming there are few matches it will usually go wasted. In contrast, every single Page requires it's title straight away, so keeping this non-deferred seems a sensible choice.
+	The way to write these instances should be fairly mechanical. If you have access to GHCi this can be automated. First add deriving (Data, Typeable) to each data type, then import Data.Binary.Defer.Derive, then run defer (undefined :: YourType). This will print out an instance.
+</p>
+<p>
+    To use deferred loading we need to manually decide which fields should be strict, and which should be deferred. In the above application text should definately be deferred - it's likely to be very big, and it's unlikely to be used. The URL is probably also a good candidate for deferring - the size is reasonable and assuming there are few matches it will usually go wasted. In contrast, every single Page requires it's title straight away, so keeping this non-deferred seems a sensible choice.
 </p>
 <pre>
 instance BinaryDefer Page where
@@ -141,6 +145,71 @@ load = do
 	There are only two things of note in this example. The first is that files must be openned with openBinaryFile, as otherwise on Windows certain characters get corrupted due to the default of text mode. The other thing is that in the load method, hClose is <i>not</i> called. Because the deferred data is read lazily on demand, if the file handle was closed this would fail.
 </p>
 
+
+<h2>A Real-life Example</h2>
+
+<p>
+    This example is much of the motivation for this library. Hoogle 4 has a big <a href="http://en.wikipedia.org/wiki/Trie">trie</a> data structure, along with a big list of matches. Each node in the trie gives a start and end of the list, which says which items match. This data structure is fast, has good space usage and scales well - all important properties for Hoogle. The basic data structure is:
+</p>
+<pre>
+data NameSearch = NameSearch (ListDefer ItemId) Trie
+
+data Trie = Trie {mapping :: [(Char,Defer Trie)], start :: Int, len :: Int}
+</pre>
+<p>
+    Note that this data structure uses two deferred data types supplied by this library - ListDefer and Defer. Defer is a data type that simply wraps the underlying one, but even using a strict variant of the definition, namely (&gt;&gt;), the data is still written out lazy. This is particularly useful in this case as a tuple already has a strict definition of BinaryDefer, so a new tuple type would have had to be defined. This method is clearer.
+</p>
+<p>
+    The ListDefer type is more interesting, and is defined in Data.Binary.Defer.List. This allows a big array to be created, and then only a substring of this array to be loaded at any one time. The interface is minimal
+</p>
+<p>
+    With this definition, everything else simply falls out easily. All the combinators used are the strict versions, in this particular case, because the types capture the laziness. This does mean that the user needs to manually call fromDefer on the second element of the pair, but this is a small price to pay.
+</p>
+
+
+<h2>Defining a Custom Instance</h2>
+
+<p>
+    While the combinators, in addition to the special few data structures defined should cover nearly all data types, it may not cover quite all. In this case a basic familiarity with the underlying mechanism is desirable. The best method is to define the following two methods:
+</p>
+<pre class="define">
+class BinaryDefer a where
+    putDefer :: Handle -> a -> IO [(Int, IO ())]
+    get :: Handle -> IO a
+</pre>
+<p>
+    The get method is most simple - it loads a value. If this value is deferred, it is likely that this load will read an integer (the real location), then use an unsafePerformIO to seek to that location and read the value. This ensures that the reading is not done until the value is required.
+</p>
+<p>
+    The putDefer method saves the value to the handle, and returns a list of locations to backpatch, along with an IO action that will write the value to wherever the handle is at that point. The easiest way to see this is on a real example. The Defer type is defined and implemented as follows:
+</p>
+<pre>
+newtype Defer x = Defer {fromDefer :: x}
+
+instance BinaryDefer a => BinaryDefer (Defer a) where
+    putDefer hndl (Defer x) = do
+        i <- hGetPos hndl
+        hPutInt hndl 0
+        return [(i, put hndl x)]
+
+    get hndl = do
+            i <- hGetInt hndl
+            return $ Defer $ unsafePerformIO $ f i
+        where
+            f i = hSetPos hndl i >> get hndl
+</pre>
+<p>
+    The putDefer follows a standard pattern of getting the current position, writing out a 0 (space for the backpatch) and then returning the location of the backpatch, along with an action to save the item. The get method reads the position, but defers actually reading the value until it is demanded, by using an unsafePerformIO.
+</p>
+<p>
+    The methods hPutInt, getGetPos etc are taken from Data.Binary.Defer.Internal. Whether external packages should be using these or not is a good question. Hopefully noone will need to hand-write BinaryDefer instances anyway.
+</p>
+
+<h2>Limitations</h2>
+
+<p>
+    All Int's are treated as 32 bits, regardless of the real Int size on your platform. All files must be below 2Gb. No other known limitations.
+</p>
 
     </body>
 </html>
