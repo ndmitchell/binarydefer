@@ -1,5 +1,5 @@
 
-module Data.Binary.Example where
+module Example where
 
 import Data.Binary.Defer
 import System.IO
@@ -10,7 +10,7 @@ data Item = Foo Int Bool
 
 
 instance BinaryDefer Item where
-    bothDefer = defers
+    bothDefer = defer
         [\ ~(Foo a b) -> unit Foo << a << b
         ,\ ~(Blah a) -> unit Blah <<~ a
         ]

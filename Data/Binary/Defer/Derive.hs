@@ -10,7 +10,7 @@ derive x = "instance " ++
            ['(' | nTypeChildren>1] ++ context ++ [')' | nTypeChildren>1] ++
            (if nTypeChildren > 0 then " => " else "") ++
            tyConString typeName ++ concatMap (' ':) typeLetters ++ " where\n" ++
-           "    bothDefer = defers\n" ++
+           "    bothDefer = defer\n" ++
            "        [" ++ concat (intersperse "\n        ," alts) ++ "\n" ++
            "        ]\n"
     where

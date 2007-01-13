@@ -107,17 +107,17 @@ search (DataBase pages) text = filter (isInfixOf text . title) pages
 </p>
 <pre>
 instance BinaryDefer Page where
-	bothDefer = defers [\ ~(Page a b c) -> unit Page << a << b << c]
+	bothDefer = defer [\ ~(Page a b c) -> unit Page << a << b << c]
 
 instance BinaryDefer DataBase where
-	bothDefer = defers [\ ~(DataBase a) -> unit DataBase << a]
+	bothDefer = defer [\ ~(DataBase a) -> unit DataBase << a]
 </pre>
 <p>
 	The way to write these instances should be fairly mechanical. Now to use deferred loading we need to manually decide which fields should be strict, and which should be deferred. In the above application text should definately be deferred - it's likely to be very big, and it's unlikely to be used. The URL is probably also a good candidate for deferring - the size is reasonable and assuming there are few matches it will usually go wasted. In contrast, every single Page requires it's title straight away, so keeping this non-deferred seems a sensible choice.
 </p>
 <pre>
 instance BinaryDefer Page where
-	bothDefer = defers [\ ~(Page a b c) -> unit Page <<~ a << b <<~ c]
+	bothDefer = defer [\ ~(Page a b c) -> unit Page <<~ a << b <<~ c]
 </pre>
 <p>
 	Note the addition of a ~ character on the &lt;&lt; to the left of each field we wish to make lazy. That is all there is too it.

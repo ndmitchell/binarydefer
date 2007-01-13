@@ -15,8 +15,8 @@
 module Data.Binary.Defer(
     BinaryDefer(..), put,
     BinaryDeferStatic(..),
-    defers,
-    Lazy(..),
+    defer,
+    Defer(..),
     unit, (<<), (<<~)
     ) where
 
@@ -63,17 +63,17 @@ type Both a = (Handle -> a -> IO [(Int, IO ())], Handle -> IO a)
 
 
 
-defer :: (a -> Pending a) -> Both a
-defer x = (save, load)
+deferOne :: (a -> Pending a) -> Both a
+deferOne x = (save, load)
     where
         save hndl value = fst (x value) hndl (-1)
 
         load hndl = snd (x undefined)  hndl
             
 
-defers :: [a -> Pending a] -> Both a
-defers [x] = defer x
-defers xs = (save, load)
+defer :: [a -> Pending a] -> Both a
+defer [x] = deferOne x
+defer xs = (save, load)
     where
         save hndl value = f $ zip [0::Int ..] xs
             where
@@ -137,19 +137,19 @@ unit f = (\hndl i -> when (i /= -1) (hPutInt hndl i) >> return [], const $ retur
             get hndl
 
 
-newtype Lazy x = Lazy {fromLazy :: x}
+newtype Defer x = Defer {fromDefer :: x}
 
-instance BinaryDefer a => BinaryDefer (Lazy a) where
-    putDefer hndl (Lazy x) = do
+instance BinaryDefer a => BinaryDefer (Defer a) where
+    putDefer hndl (Defer x) = do
         i <- hGetPos hndl
         hPutInt hndl 0
         return [(i, put hndl x)]
 
     get hndl = do
             i <- hGetInt hndl
-            return $ Lazy $ unsafePerformIO $ f i
+            return $ Defer $ unsafePerformIO $ f i
         where
             f i = hSetPos hndl i >> get hndl
 
-instance BinaryDefer a => BinaryDeferStatic (Lazy a) where
+instance BinaryDefer a => BinaryDeferStatic (Defer a) where
     getSize _ = 4
