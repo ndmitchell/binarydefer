@@ -2,7 +2,7 @@
 module Data.Binary.Defer(
     BinaryDefer(..), put,
     BinaryDeferStatic(..),
-    defer, defers,
+    defers,
     Lazy(..),
     unit, (<<), (<<~)
     ) where
