@@ -1,0 +1,146 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <title>Deferred Binary Serialisation</title>
+        <style type="text/css">
+pre {
+    border: 2px solid gray;
+    padding: 1px;
+    padding-left: 5px;
+    margin-left: 10px;
+    background-color: #eee;
+}
+
+pre.define {
+    background-color: #ffb;
+    border-color: #cc0;
+}
+
+body {
+    font-family: sans-serif;
+}
+
+h1, h2, h3 {
+    font-family: serif;
+}
+
+h1 {
+    color: rgb(23,54,93);
+    border-bottom: 1px solid rgb(79,129,189);
+    padding-bottom: 2px;
+    font-variant: small-caps;
+    text-align: center;
+}
+
+a {
+    color: rgb(54,95,145);
+}
+
+h2 {
+    color: rgb(54,95,145);
+}
+
+h3 {
+    color: rgb(79,129,189);
+}
+        </style>
+    </head>
+    <body>
+
+<h1>Deferred Binary Serialisation</h1>
+
+<p style="text-align:right;margin-bottom:25px;">
+    by <a href="http://www.cs.york.ac.uk/~ndm/">Neil Mitchell</a>
+</p>
+
+<p>
+    This library provides a framework for doing binary serialisation, with support for deferred loading. If you don't intend to use the deferred loading side, I recommend the new binary module from Hac 07, as it is pure and likely to be faster for you. If you do need deferred loading, then this is the only module for you!
+</p>
+<p>
+    Deferred loading is for when a large data structure exists, but typically only a small fraction of this data structure will be required. By using deferred loading, some of the data structure can be read quickly, and the rest can be read on demand.
+</p>
+<p>
+    This document proceeds as follows:
+</p>
+<ol>
+	<li>Deferred loading explained, the basics</li>
+    <li>A real-life example (from Hoogle)</li>
+</ol>
+<p>
+    The source code to this library is at:
+</p>
+<pre>
+darcs get --partial <a href="http://www.cs.york.ac.uk/fp/darcs/binarydefer">http://www.cs.york.ac.uk/fp/darcs/binarydefer</a>
+</pre>
+
+<h3>Acknowledgements</h3>
+
+<p>
+    The Hac 07 organisers and attendees - for both helpful ideas and implementation tweaks, Tom Shackell for discussion on the interface and mechanisms.
+</p>
+
+
+<h2>Deferred Loading</h2>
+
+<p>
+	A normal serialisation library will dump the entire structure to disk, and then read it back. Normally, this is exactly what is wanted. However, in some cases a large part of the data structure may go unused. Lets take a very basic example of a search engine, which indexes web pages. The data structure for this is:
+</p>
+<pre>
+data DataBase = DataBase [Page]
+
+data Page = Page {url :: String, title :: String, text :: String}
+</pre>
+<p>
+	For the purposes of this example, lets assume that the search only works on the title. The search engine searches through all the titles, and for all the ones that match it writes out a page listing all the urls. If a page is clicked, then it is displayed from the cache. Some really basic code for this would be:
+</p>
+<pre>
+search :: DataBase -> String -> [Page]
+search (DataBase pages) text = filter (isInfixOf text . title) pages
+</pre>
+<p>
+	One thing to notice is that the search function only looks at the title. If we use a normal binary library the program could easily spend the majority of the time loading the actual text from disk, when typically it goes unused. Deferred loading instead puts a pointer in the file for the deferred fields (of which page would be one), and writes the actual contents out afterwards. This gives good locality of the non-deferred data, and a very easy interface. When using deferred loading, the code does not need to change based on which fields are deferred etc, so the abstraction remains.
+</p>
+<p>
+	Task 1 is to write an instance for BinaryDefer for Page and DataBase, to start with we'll make all fields strictly loaded:
+</p>
+<pre>
+instance BinaryDefer Page where
+	bothDefer = defers [\ ~(Page a b c) -> unit Page << a << b << c]
+
+instance BinaryDefer DataBase where
+	bothDefer = defers [\ ~(DataBase a) -> unit DataBase << a]
+</pre>
+<p>
+	The way to write these instances should be fairly mechanical. Now to use deferred loading we need to manually decide which fields should be strict, and which should be deferred. In the above application text should definately be deferred - it's likely to be very big, and it's unlikely to be used. The URL is probably also a good candidate for deferring - the size is reasonable and assuming there are few matches it will usually go wasted. In contrast, every single Page requires it's title straight away, so keeping this non-deferred seems a sensible choice.
+</p>
+<pre>
+instance BinaryDefer Page where
+	bothDefer = defers [\ ~(Page a b c) -> unit Page <<~ a << b <<~ c]
+</pre>
+<p>
+	Note the addition of a ~ character on the &lt;&lt; to the left of each field we wish to make lazy. That is all there is too it.
+</p>
+<p>
+	Now we've got our data structure the only thing remaining is to actually load and save it. This can be done very easily with Haskell handles:
+</p>
+<pre>
+save :: DataBase -> IO ()
+save value = do
+	hndl <- openBinaryFile "temp.txt" WriteMode
+	put hndl val
+	hClose hndl
+
+load :: IO DataBase
+load = do
+	hndl <- openBinaryFile "temp.txt" ReadMode
+	get hndl
+</pre>
+<p>
+	There are only two things of note in this example. The first is that files must be openned with openBinaryFile, as otherwise on Windows certain characters get corrupted due to the default of text mode. The other thing is that in the load method, hClose is <i>not</i> called. Because the deferred data is read lazily on demand, if the file handle was closed this would fail.
+</p>
+
+
+    </body>
+</html>
