@@ -1,5 +1,5 @@
 
-module Data.Binary.Defer.List(ListDefer) where
+module Data.Binary.Defer.List(ListDefer, newListDefer, readListDefer) where
 
 import System.IO
 import Control.Monad
