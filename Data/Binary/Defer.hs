@@ -1,3 +1,16 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      : Data.Binary.Defer
+-- Copyright   : Neil Mitchell
+-- License     : BSD3
+-- 
+-- Maintainer  : Neil Mitchell <http://www.cs.york.ac.uk/~ndm/>
+-- Stability   : unstable
+-- Portability : portable to Hugs and GHC. Requires Control.Exception.catch
+--
+-- Binary serialisation of deferred values
+--
+-----------------------------------------------------------------------------
 
 module Data.Binary.Defer(
     BinaryDefer(..), put,
