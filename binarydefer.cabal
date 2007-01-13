@@ -1,0 +1,10 @@
+name:            binarydefer
+version:         1.0
+license:         BSD3
+author:          Neil Mitchell
+synopsis:        Binary serialization with deferred loading
+build-depends:   base
+exposed-modules: Data.Binary.Defer,
+                 Data.Binary.Defer.List
+extensions:      ForeignFunctionInterface,CPP
+hs-source-dirs:  .
