@@ -75,7 +75,10 @@ defer :: [a -> Pending a] -> Both a
 defer [x] = deferOne x
 defer xs = (save, load)
     where
-        save hndl value = f $ zip [0::Int ..] xs
+        -- value `seq` is important to that a _|_ in value is
+        -- thrown before entering a Catch statement
+        -- may still not be safe if multiple levels of combinators
+        save hndl value = value `seq` f (zip [0::Int ..] xs)
             where
                 f [] = error "unmatched item to save, or trying to save _|_"
                 f ((i,x):xs) = catch (fst (x value) hndl i) (const $ f xs)
