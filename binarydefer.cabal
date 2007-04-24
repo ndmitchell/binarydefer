@@ -7,5 +7,4 @@ build-depends:   base
 exposed-modules: Data.Binary.Defer,
                  Data.Binary.Defer.List,
                  Data.Binary.Defer.Internal
-extensions:      ForeignFunctionInterface,CPP
 hs-source-dirs:  .
