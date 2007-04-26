@@ -136,8 +136,11 @@ unit f = (\hndl i -> when (i /= -1) (hPutInt hndl i) >> return [], const $ retur
                     )
     where
         lazyRead hndl pos = unsafePerformIO $ do
+            p <- hGetPos hndl
             hSetPos hndl pos
-            get hndl
+            res <- get hndl
+            hSetPos hndl p
+            return res
 
 
 newtype Defer x = Defer {fromDefer :: x}
