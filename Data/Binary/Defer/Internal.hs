@@ -21,7 +21,7 @@ hSetPos hndl = hSeek hndl AbsoluteSeek . toInteger
 
 hPutInt :: Handle -> Int -> IO ()
 hPutInt hndl w32 = do
-    let w4 = (w32 `shiftR` 24)
+    let w4 = (w32 `shiftR` 24) .&. 0xff
         w3 = (w32 `shiftR` 16) .&. 0xff
         w2 = (w32 `shiftR`  8) .&. 0xff
         w1 =  w32              .&. 0xff
