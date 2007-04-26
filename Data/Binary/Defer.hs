@@ -146,16 +146,10 @@ unit f = (\hndl i -> when (i /= -1) (hPutInt hndl i) >> return [], const $ retur
 newtype Defer x = Defer {fromDefer :: x}
 
 instance BinaryDefer a => BinaryDefer (Defer a) where
-    putDefer hndl (Defer x) = do
-        i <- hGetPos hndl
-        hPutInt hndl 0
-        return [(i, put hndl x)]
+    bothDefer = defer [\ ~(Defer a) -> unit Defer <<~ a]
 
-    get hndl = do
-            i <- hGetInt hndl
-            return $ Defer $ unsafePerformIO $ f i
-        where
-            f i = hSetPos hndl i >> get hndl
+instance Show a => Show (Defer a) where
+    show (Defer a) = "(Defer " ++ show a ++ ")"
 
 instance BinaryDefer a => BinaryDeferStatic (Defer a) where
     getSize _ = 4
