@@ -17,7 +17,7 @@ module Data.Binary.Defer(
     BinaryDeferStatic(..),
     defer,
     Defer(..),
-    unit, (<<), (<<~)
+    unit, (<<), (<<~), (<<!)
     ) where
 
 import Prelude hiding (catch)
@@ -116,6 +116,10 @@ instance BinaryDeferStatic Bool where getSize _ = 1
 
 unit :: a -> Pending a
 unit f = (\hndl i -> when (i /= -1) (hPutInt hndl i) >> return [], const $ return f)
+
+
+(<<!) :: Pending a -> a -> Pending a
+(<<!) (save,load) val = (val `seq` save, load)
 
 
 (<<) :: BinaryDefer a => Pending (a -> b) -> a -> Pending b
