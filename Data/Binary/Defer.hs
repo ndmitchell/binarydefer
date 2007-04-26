@@ -43,7 +43,7 @@ class BinaryDefer a where
     get = snd bothDefer
 
 put :: BinaryDefer a => Handle -> a -> IO ()
-put hndl x = putDefer hndl x >>= mapM_ f
+put hndl x = putDefer hndl x >>= mapM_ f . reverse
     where
         f (pos,action) = do
             i <- hGetPos hndl
