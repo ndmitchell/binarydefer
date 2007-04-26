@@ -119,7 +119,7 @@ unit f = (\hndl i -> when (i /= -1) (hPutInt hndl i) >> return [], const $ retur
 
 
 (<<) :: BinaryDefer a => Pending (a -> b) -> a -> Pending b
-(save,load) << x = (\hndl i -> x `seq` do lazy <- save hndl i; s hndl x; return lazy
+(save,load) << x = (\hndl i -> x `seq` do lazy <- save hndl i; l <- s hndl x; return (l ++ lazy)
                    ,\hndl -> do f <- load hndl; x2 <- l hndl; return (f x2))
     where (s,l) = bothDefer
 
