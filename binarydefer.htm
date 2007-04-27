@@ -145,6 +145,20 @@ load = do
 	There are only two things of note in this example. The first is that files must be openned with openBinaryFile, as otherwise on Windows certain characters get corrupted due to the default of text mode. The other thing is that in the load method, hClose is <i>not</i> called. Because the deferred data is read lazily on demand, if the file handle was closed this would fail.
 </p>
 
+<h3>One important exception</h3>
+
+<p>
+    If one of your constructors is of zero-arity, the pattern must change slightly:
+</p>
+<pre>
+instance BinaryDefer Bool where
+    bothDefer = defer [\ ~(x@False) -> unit False &lt;&lt;! x
+                      ,\ ~(x@True ) -> unit True  &lt;&lt;! x
+</pre>
+<p>
+    The reason for this is an implementation detail leaking through, alas. If you have a zero-arity constructor which incorrectly misses the extra step you will get a warning about <tt>PendingSome</tt> versus <tt>PendingNone</tt> - this mistake is guarded by a phantom type.
+</p>
+
 
 <h2>A Real-life Example</h2>
 
