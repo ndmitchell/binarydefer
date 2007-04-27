@@ -58,20 +58,24 @@ class BinaryDefer a => BinaryDeferStatic a where
     getSize :: a -> Int
 
 
-type Pending a = (Handle -> Int -> IO [(Int, IO ())], Handle -> IO a)
+-- have you used any combinators of <<, <<~ or <<!
+data PendingNone = PendingNone
+data PendingSome = PendingSome
+
+data Pending a b = Pending {psave :: Handle -> Int -> IO [(Int, IO ())], pload :: Handle -> IO a}
 type Both a = (Handle -> a -> IO [(Int, IO ())], Handle -> IO a)
 
 
 
-deferOne :: (a -> Pending a) -> Both a
+deferOne :: (a -> Pending a PendingSome) -> Both a
 deferOne x = (save, load)
     where
-        save hndl value = fst (x value) hndl (-1)
+        save hndl value = psave (x value) hndl (-1)
 
-        load hndl = snd (x undefined)  hndl
+        load hndl = pload (x undefined)  hndl
             
 
-defer :: [a -> Pending a] -> Both a
+defer :: [a -> Pending a PendingSome] -> Both a
 defer [x] = deferOne x
 defer xs = (save, load)
     where
@@ -81,11 +85,11 @@ defer xs = (save, load)
         save hndl value = value `seq` f (zip [0::Int ..] xs)
             where
                 f [] = error "unmatched item to save, or trying to save _|_"
-                f ((i,x):xs) = catch (fst (x value) hndl i) (const $ f xs)
+                f ((i,x):xs) = catch (psave (x value) hndl i) (const $ f xs)
 
         load hndl = do
             i <- hGetInt hndl
-            snd ((xs !! i) undefined) hndl
+            pload ((xs !! i) undefined) hndl
 
 
 
@@ -114,30 +118,32 @@ instance BinaryDeferStatic Char where getSize _ = 1
 instance BinaryDeferStatic Bool where getSize _ = 1
 
 
-unit :: a -> Pending a
-unit f = (\hndl i -> when (i /= -1) (hPutInt hndl i) >> return [], const $ return f)
+unit :: a -> Pending a PendingNone
+unit f = Pending (\hndl i -> when (i /= -1) (hPutInt hndl i) >> return [])
+                 (const $ return f)
 
 
-(<<!) :: Pending a -> a -> Pending a
-(<<!) (save,load) val = (val `seq` save, load)
+(<<!) :: Pending a p -> a -> Pending a PendingSome
+(<<!) (Pending save load) val = Pending (val `seq` save) load
 
 
-(<<) :: BinaryDefer a => Pending (a -> b) -> a -> Pending b
-(save,load) << x = (\hndl i -> x `seq` do lazy <- save hndl i; l <- s hndl x; return (l ++ lazy)
-                   ,\hndl -> do f <- load hndl; x2 <- l hndl; return (f x2))
+(<<) :: BinaryDefer a => Pending (a -> b) p -> a -> Pending b PendingSome
+(Pending save load) << x = Pending
+        (\hndl i -> x `seq` do lazy <- save hndl i; l <- s hndl x; return (l ++ lazy))
+        (\hndl -> do f <- load hndl; x2 <- l hndl; return (f x2))
     where (s,l) = bothDefer
 
-(<<~) :: BinaryDefer a => Pending (a -> b) -> a -> Pending b
-(save,load) <<~ x = (\hndl i -> x `seq` do
-                          lazy <- save hndl i
-                          pos <- hGetPos hndl
-                          hPutInt hndl 0
-                          return ((pos,put hndl x):lazy)
-                    ,\hndl -> do
-                          f <- load hndl
-                          pos <- hGetInt hndl
-                          return $ f $ lazyRead hndl pos
-                    )
+(<<~) :: BinaryDefer a => Pending (a -> b) p -> a -> Pending b PendingSome
+(Pending save load) <<~ x = Pending
+    (\hndl i -> x `seq` do
+        lazy <- save hndl i
+        pos <- hGetPos hndl
+        hPutInt hndl 0
+        return ((pos,put hndl x):lazy))
+    (\hndl -> do
+        f <- load hndl
+        pos <- hGetInt hndl
+        return $ f $ lazyRead hndl pos)
     where
         lazyRead hndl pos = unsafePerformIO $ do
             p <- hGetPos hndl
