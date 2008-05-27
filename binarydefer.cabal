@@ -1,5 +1,5 @@
 name:            binarydefer
-build-type:      simple
+build-type:      Simple
 version:         1.0
 license:         BSD3
 author:          Neil Mitchell
