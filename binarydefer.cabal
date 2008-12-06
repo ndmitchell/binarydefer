@@ -1,6 +1,6 @@
 name:            binarydefer
 build-type:      Simple
-version:         1.1
+version:         1.2
 license:         BSD3
 author:          Neil Mitchell
 synopsis:        Binary serialization with deferred loading
