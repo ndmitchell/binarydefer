@@ -7,5 +7,5 @@ synopsis:        Binary serialization with deferred loading
 build-depends:   base
 exposed-modules: Data.Binary.Defer,
                  Data.Binary.Defer.List
-other-modules:   Data.Binary.Defer.Internal
+                 Data.Binary.Defer.Internal
 hs-source-dirs:  .
