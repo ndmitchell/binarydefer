@@ -4,7 +4,7 @@
 -- Copyright   : Neil Mitchell
 -- License     : BSD3
 -- 
--- Maintainer  : Neil Mitchell <http://www.cs.york.ac.uk/~ndm/>
+-- Maintainer  : Neil Mitchell <http://community.haskell.org/~ndm/>
 -- Stability   : unstable
 -- Portability : portable to Hugs and GHC. Requires Control.Exception.catch
 --
