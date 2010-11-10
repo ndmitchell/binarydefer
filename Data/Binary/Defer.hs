@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      : Data.Binary.Defer
@@ -21,7 +22,7 @@ module Data.Binary.Defer(
     ) where
 
 import Prelude hiding (catch)
-import Control.Exception (catch)
+import Control.Exception (catch, SomeException)
 
 import System.IO
 import Foreign(unsafePerformIO)
@@ -85,7 +86,7 @@ defer xs = (save, load)
         save hndl value = value `seq` f (zip [0::Int ..] xs)
             where
                 f [] = error "unmatched item to save, or trying to save _|_"
-                f ((i,x):xs) = catch (psave (x value) hndl i) (const $ f xs)
+                f ((i,x):xs) = catch (psave (x value) hndl i) (\(e :: SomeException) -> f xs)
 
         load hndl = do
             i <- hGetInt hndl
