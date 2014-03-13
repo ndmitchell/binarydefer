@@ -25,7 +25,7 @@ import Prelude hiding (catch)
 import Control.Exception (catch, SomeException)
 
 import System.IO
-import Foreign(unsafePerformIO)
+import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad
 import Data.Binary.Defer.Internal
 
