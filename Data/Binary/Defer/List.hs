@@ -2,8 +2,8 @@
 module Data.Binary.Defer.List(ListDefer, newListDefer, readListDefer) where
 
 import System.IO
+import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad
-import Foreign (unsafePerformIO)
 
 import Data.Binary.Defer
 import Data.Binary.Defer.Internal
