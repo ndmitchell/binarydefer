@@ -1,6 +1,6 @@
 name:            binarydefer
 build-type:      Simple
-version:         1.2.1
+version:         1.2.2
 license:         BSD3
 license-file:    LICENSE
 author:          Neil Mitchell <ndmitchell@gmail.com>
